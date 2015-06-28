@@ -1,0 +1,21 @@
+:Base Astrocap.hlp
+:Title AstroCap2
+1 Allgemeines
+2 Was ist Astrocap2?=IDH_Wasist
+2 Was kann AstroCap2?=IDH_Waskann
+2 Copyright und Haftungsausschluss=IDH_Copyright
+1 Arbeiten mit AstroCap2
+2 Die Arbeitsweise=IDH_Arbeitsweise
+2 Die Einstellungen=IDH_Einstellungen
+2 Vom Fleck zum Bitmap=IDH_Fleck2Bitmap
+2 Dunkelstrom und Flatfield=IDH_Darkflat
+1 Die Effekte
+2 RGB Binning=IDH_Binning
+2 Kontrast maximieren=IDH_Kontrast
+2 Invertieren=IDH_Invertieren
+2 Binning 2x2=IDH_Binning22
+2 Binning 2x1=IDH_Binning21
+2 Graustufen=IDH_Graustufen
+2 Darkframe=IDH_Darkframe
+2 Flatfield=IDH_Flatfield
+1 Die Filter
