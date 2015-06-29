@@ -4,18 +4,28 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  StdCtrls, ExtCtrls, RXSpin;
+  StdCtrls, RXSpin, Mask, ExtCtrls, Placemnt;
 
 type
   TFTimer = class(TForm)
     Label1: TLabel;
-    SEIntervall: TRxSpinEdit;
-    Timer1: TTimer;
-    BStart: TButton;
-    procedure BStartClick(Sender: TObject);
-    procedure Timer1Timer(Sender: TObject);
+    Label2: TLabel;
+    Label3: TLabel;
+    CBTimer: TCheckBox;
+    FPTimer: TFormPlacement;
+    Timer: TTimer;
+    MEStart: TMaskEdit;
+    MEStop: TMaskEdit;
+    SEFreq: TRxSpinEdit;
+    procedure CBTimerClick(Sender: TObject);
+    procedure SEFreqChange(Sender: TObject);
+    procedure TimerTimer(Sender: TObject);
+    procedure MEStartStopChange(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     { Private-Deklarationen }
+    start,stop: TDateTime;
+    dostop: Boolean;
   public
     { Public-Deklarationen }
   end;
@@ -25,29 +35,56 @@ var
 
 implementation
 
-uses UHaupt;
+uses UMain;
 
 {$R *.DFM}
 
-procedure TFTimer.BStartClick(Sender: TObject);
+procedure TFTimer.CBTimerClick(Sender: TObject);
 begin
-  if Timer1.Enabled then
+  start := StrToTime('00:00:00');
+  stop  := StrToTime('23:59:59');
+  dostop := true;
+  try
+    start := StrToTime(MEStart.Text);
+    stop := StrToTime(MEStop.Text);
+  except on EconvertError do
+    dostop := false;
+  end;
+  if start=stop then dostop := false;
+  Timer.Enabled := CBTimer.Checked;
+end;
+
+procedure TFTimer.SEFreqChange(Sender: TObject);
+begin
+  Timer.Interval := SEFreq.AsInteger*1000;
+end;
+
+procedure TFTimer.TimerTimer(Sender: TObject);
+begin
+  if dostop and (now>stop) then
   begin
-    BStart.Caption := 'Start';
-    Timer1.Enabled := False;
-  end
-  else
-  begin
-    Timer1.Interval := SEIntervall.AsInteger*1000;
-    BStart.Caption := 'Stop';
-    Timer1.Enabled := True;
+    Timer.Enabled := False;
+    CBTimer.Checked := False;
+  end;
+  if (dostop and (now>=start) and (now<=stop)) or
+     (not dostop) then
+    FMain.SBRecordClick(Sender);
+end;
+
+procedure TFTimer.MEStartStopChange(Sender: TObject);
+begin
+  try
+    start := StrToTime(MEStart.Text);
+    stop := StrToTime(MEStop.Text);
+  except on EconvertError do
+    dostop := false;
   end;
 end;
 
-procedure TFTimer.Timer1Timer(Sender: TObject);
+procedure TFTimer.FormCreate(Sender: TObject);
 begin
-  FHaupt.MISingleframeClick(Sender);
-  MessageBeep($FFFFFFFF);
+  dostop := true;
+  Timer.Enabled := False;
 end;
 
 end.

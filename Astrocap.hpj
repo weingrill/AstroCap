@@ -5,11 +5,15 @@ COMPRESS=12 Hall Zeck
 LCID=0xc07 0x0 0x0 ; Deutsch (Österreich)
 REPORT=Yes
 FTS=1
-TITLE=AstroCap2
+CONTENTS=IDH_Wasist
+TITLE=AstroCap3
 CNT=AstroCap.cnt
-COPYRIGHT=2001 (c) Jörg Weingrill
-CITATION=2001 (c) Jörg Weingrill
+COPYRIGHT=2003 (c) Jörg Weingrill
+CITATION=2003 (c) Jörg Weingrill
 HLP=Astrocap.hlp
 
 [FILES]
 AstroCap.rtf
+
+[CONFIG]
+BrowseButtons()

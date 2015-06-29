@@ -1,4 +1,4 @@
-unit UCapThr;
+unit UCapTh;
 
 interface
 
@@ -6,11 +6,10 @@ uses
   Classes;
 
 type
-  CaptureThread = class(TThread)
+  TCaptureThread = class(TThread)
   private
     { Private-Deklarationen }
   protected
-    procedure Show;
     procedure Execute; override;
   end;
 
@@ -22,23 +21,16 @@ implementation
 
   wobei UpdateCaption so aussehen könnte:
 
-    procedure CaptureThread.UpdateCaption;
+    procedure TCaptureThread.UpdateCaption;
     begin
       Form1.Caption := 'Aktualisiert in einem Thread';
     end; }
 
-{ CaptureThread }
+{ TCaptureThread }
 
-procedure CaptureThread.Show;
+procedure TCaptureThread.Execute;
 begin
-  FFrame.Image1.Refresh;
-end;
-
-procedure CaptureThread.Execute;
-  FrameToBitmap(FFrame.Image1.Picture.Bitmap,lpVhdr.lpData,Videocap1.BitMapInfo);
-  Synchronize(Show);
-begin
-
+  { Thread-Code hier plazieren }
 end;
 
 end.

@@ -1,21 +1,18 @@
 :Base Astrocap.hlp
-:Title AstroCap2
+:Title AstroCap3
 1 Allgemeines
-2 Was ist Astrocap2?=IDH_Wasist
-2 Was kann AstroCap2?=IDH_Waskann
+2 Was ist Astrocap3?=IDH_Wasist
 2 Copyright und Haftungsausschluss=IDH_Copyright
-1 Arbeiten mit AstroCap2
+1 Einführung
+2 Erste Schritte=IDH_Tutorial
+1 Arbeiten mit AstroCap3
 2 Die Arbeitsweise=IDH_Arbeitsweise
-2 Die Einstellungen=IDH_Einstellungen
 2 Vom Fleck zum Bitmap=IDH_Fleck2Bitmap
-2 Dunkelstrom und Flatfield=IDH_Darkflat
-1 Die Effekte
-2 RGB Binning=IDH_Binning
-2 Kontrast maximieren=IDH_Kontrast
-2 Invertieren=IDH_Invertieren
-2 Binning 2x2=IDH_Binning22
-2 Binning 2x1=IDH_Binning21
-2 Graustufen=IDH_Graustufen
-2 Darkframe=IDH_Darkframe
-2 Flatfield=IDH_Flatfield
-1 Die Filter
+2 Das Preview-Fenster=IDH_Preview
+2 Das Hauptfenster=IDH_Main
+2 Das Optometric Fenster=IDH_Optometric
+2 Der Timer=IDH_Timer
+2 Telescope Control=IDH_Guiding
+2 Das Output Fenster=IDH_Output
+1 Erweitert
+2 Für Experten=IDH_Expertsonly

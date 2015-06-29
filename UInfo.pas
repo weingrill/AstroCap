@@ -4,7 +4,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
-  ComCtrls, TeEngine, Series, ExtCtrls, TeeProcs, Chart, Math, U_FTG2;
+  ComCtrls, TeEngine, Series, ExtCtrls, TeeProcs, Chart, Math, U_FTG2,
+  Placemnt;
 
 type
   TRGBValue = packed record
@@ -22,8 +23,7 @@ type
     Series2: TFastLineSeries;
     Series3: TFastLineSeries;
     Series4: TFastLineSeries;
-    procedure FormShow(Sender: TObject);
-    procedure FormResize(Sender: TObject);
+    FPInfo: TFormPlacement;
     procedure TCInfoChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
@@ -43,8 +43,11 @@ type
     intensity: Extended;
     F: Textfile;
     cin,cout,cspec: array [0..1024] of tcomplex;
+    function FnSobel(Bitmap: TBitmap): Extended;
+    function FnFWHM(Bitmap: TBitmap): Extended;
   public
     { Public-Deklarationen }
+    x0,y0: double;
     procedure Optometric(Bitmap: TBitmap);
   end;
 
@@ -53,7 +56,7 @@ var
 
 implementation
 
-uses UFrame, USettings, UHaupt;
+uses UMain;
 
 {$R *.DFM}
 
@@ -61,17 +64,6 @@ uses UFrame, USettings, UHaupt;
 function avg(x,y: extended): extended;
 begin
   result := (x+y)/2;
-end;
-
-procedure TFInfo.FormShow(Sender: TObject);
-begin
-  FInfo.Top := FFrame.Height;
-  FInfo.Left := 0;
-end;
-
-procedure TFInfo.FormResize(Sender: TObject);
-begin
-  FInfo.Hint := Format('%d/%d',[FInfo.Height,FInfo.Width]);
 end;
 
 procedure TFInfo.TCInfoChange(Sender: TObject);
@@ -86,8 +78,95 @@ begin
       cspec[n].r := 0;
       cspec[n].i := 0;
     end;
-
+  x0 := FMain.center_x+FMain.x1;
+  y0 := FMain.center_y+FMain.y1;
 end;
+
+function TFInfo.FnSobel(Bitmap: TBitmap): Extended;
+var x,y,w,h: integer;
+begin
+  w := Bitmap.Width;
+  h := Bitmap.Height;
+  size := w*h;
+  sobel := 0.0;
+  integral := 0.0;
+  for y := 1 to h - 2 do
+  begin
+    for x := 1 to w - 2 do
+    begin
+      Pixel := Bitmap.Scanline[y];
+      Inc(Pixel,x);
+      // Current Pixel (x,y)
+      intensity := Pixel.Red+Pixel.Green+Pixel.Blue;
+      s1 := intensity;
+      integral := integral + intensity;
+      Dec(Pixel); // (x-1,y)
+      intensity := Pixel.Red+Pixel.Green+Pixel.Blue;
+      sobel := sobel + abs(s1-intensity);
+      Inc(Pixel,2); // (x+1,y)
+      intensity := Pixel.Red+Pixel.Green+Pixel.Blue;
+      sobel := sobel + abs(s1-intensity);
+
+      Pixel := Bitmap.Scanline[y-1];
+      Inc(Pixel,x-1); // (x-1,y-1)
+      intensity := Pixel.Red+Pixel.Green+Pixel.Blue;
+      sobel := sobel + abs(s1-intensity);
+      Inc(Pixel); // (x,y-1)
+      intensity := Pixel.Red+Pixel.Green+Pixel.Blue;
+      sobel := sobel + abs(s1-intensity);
+      Inc(Pixel); // (x+1,y-1)
+      intensity := Pixel.Red+Pixel.Green+Pixel.Blue;
+      sobel := sobel + abs(s1-intensity);
+
+      Pixel := Bitmap.Scanline[y+1];
+      Inc(Pixel,x-1); // (x-1,y+1)
+      intensity := Pixel.Red+Pixel.Green+Pixel.Blue;
+      sobel := sobel + abs(s1-intensity);
+      Inc(Pixel); // (x,y+1)
+      intensity := Pixel.Red+Pixel.Green+Pixel.Blue;
+      sobel := sobel + abs(s1-intensity);
+      Inc(Pixel); // (x+1,y+1)
+      intensity := Pixel.Red+Pixel.Green+Pixel.Blue;
+      sobel := sobel + abs(s1-intensity);
+    end; // x
+  end; // y
+  Result := sobel/ (size*3);
+end;
+
+function TFInfo.FnFWHM(Bitmap: TBitmap): Extended;
+var x,y,w,h: integer;
+    average, fwhm: double;
+begin
+  w := Bitmap.Width;
+  h := Bitmap.Height;
+  size := w*h;
+  average := 0; // avg
+  fwhm := 0; // fwhm
+  for y := 1 to h-2 do
+  begin
+    Pixel := Bitmap.Scanline[y];
+    for x := 1 to w -2 do
+    begin
+      intensity := (Pixel.Red+Pixel.Green+Pixel.Blue) / 3;
+      average := average + intensity;
+      Inc(Pixel);
+    end;
+  end;
+  average := average/(w*h);
+  for y := 1 to h-2 do
+  begin
+    Pixel := Bitmap.Scanline[y];
+    for x := 1 to w -2 do
+    begin
+      intensity := (Pixel.Red+Pixel.Green+Pixel.Blue) / 3;
+      if (intensity)>average then
+        fwhm := fwhm+1;
+      Inc(Pixel);
+    end;
+  end;
+  Result := sqrt(fwhm);
+end;
+
 
 procedure TFInfo.Optometric(Bitmap: TBitmap);
 var x,y,w,h: integer;
@@ -95,6 +174,7 @@ begin
   w := Bitmap.Width;
   h := Bitmap.Height;
   size := w*h;
+  if w*h<=1 then exit;
   case TCInfo.TabIndex of
   0:
   begin
@@ -102,10 +182,10 @@ begin
     begin
       r[x] := 0; g[x] := 0; b[x] := 0;
     end;
-    for y := 0 to h -1 do
+    for y := 1 to h -2 do
     begin
       Pixel := Bitmap.Scanline[y];
-      for x := 0 to w -1 do
+      for x := 1 to w -2 do
       begin
         Inc(r[Pixel.Red]);
         Inc(g[Pixel.Green]);
@@ -121,6 +201,10 @@ begin
     Series3.Clear;
     Series4.Clear;
 
+    FMain.TBSeeing.Min := 0;
+    FMain.TBSeeing.Max := 255;
+    FMain.TBSeeing.SelStart := 0;
+    FMain.TBSeeing.SelEnd := 255;
     for x := 0 to 255 do
     begin
       Series1.Add(8*Log2(r[x]+1),'');
@@ -128,18 +212,36 @@ begin
       Series3.Add(8*Log2(b[x]+1),'');
       Series4.Add(8*Log2(r[x]+g[x]+b[x]+1),'');
     end;
+    for x := 0 to 255 do
+    begin
+      if (r[x]>1) then
+      begin
+        FMain.TBSeeing.SelStart := x;
+        break;
+      end;
+    end;
+    for x := 255 downto 0 do
+    begin
+      if (r[x]>1) then
+      begin
+        FMain.TBSeeing.SelEnd := x;
+        break;
+      end;
+    end;
+    FMain.SeeingOK := (FMain.TBSeeing.Position >= FMain.TBSeeing.SelStart) and
+                      (FMain.TBSeeing.Position <= FMain.TBSeeing.SelEnd);
   end; // Tabindex 0
-  1:
+  1: // Integral
   begin
     Histogramm.LeftAxis.Automatic := true;
     rintegral := 0.0;
     gintegral := 0.0;
     bintegral := 0.0;
     integral := 0.0;
-    for y := 0 to h -1 do
+    for y := 1 to h -2 do
     begin
       Pixel := Bitmap.Scanline[y];
-      for x := 0 to w -1 do
+      for x := 1 to w -2 do
       begin
         rintegral := rintegral+Pixel.Red;
         gintegral := gintegral+Pixel.Green;
@@ -175,12 +277,14 @@ begin
       Series3.AddXY(Series3.XValues.Last+1,bintegral,'',clBlue);
       Series4.AddXY(Series4.XValues.Last+1,integral,'',clWhite);
     end;
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-    FSettings.TBSeeing.SelEnd := Round(integral*100);
-//    FSettings.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd <= FSettings.TBSeeing.Position);
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(integral*100);
+//    FMain.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
+    FMain.SeeingOK := true; //(FMain.TBSeeing.SelEnd <= FMain.TBSeeing.Position);
+    write(F,FormatDateTime('c;',Now));
+    writeln(F,Format('%f;%f;%f;%f',[rintegral,gintegral,bintegral,integral]));
 
     Histogramm.Refresh;
   end; // Tabindex 1
@@ -263,12 +367,12 @@ begin
 //    if Sobel < Minsobel then Minsobel := sobel;
 //    if sobel > MaxSobel then MaxSobel := sobel;
 //    if maxsobel-minsobel<0.5 then Maxsobel := minsobel+0.5;
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-    FSettings.TBSeeing.SelEnd := Round(sobel*100);
-//    FSettings.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd >= FSettings.TBSeeing.Position);
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(sobel*100);
+//    FMain.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd >= FMain.TBSeeing.Position);
     {if Series1.XValues.Count>255 then Series1.Delete(0);
     if Series2.XValues.Count>255 then Series2.Delete(0);
     if Series3.XValues.Count>255 then Series3.Delete(0);
@@ -283,44 +387,51 @@ begin
     if Series2.XValues.Count > 0 then Series2.AddXY(Series2.XValues.Last+1,gsobel,'',clGreen);
     if Series3.XValues.Count > 0 then Series3.AddXY(Series3.XValues.Last+1,bsobel,'',clBlue);
     }if Series4.XValues.Count > 0 then Series4.AddXY(Series4.XValues.Last+1,sobel,'',clWhite);
-    writeln(F,Format('%f',[sobel]));
+    write(F,FormatDateTime('c;',Now));
+    writeln(F,Format('%f;%f;%f;%f',[rsobel,gsobel,bsobel,sobel]));
     Histogramm.Refresh;
   end; // Tabindex 2
-  3:
+  3: // Profil
   begin
     Series1.Clear;
     Series2.Clear;
     Series3.Clear;
     Series4.Clear;
     Histogramm.LeftAxis.Automatic := true;
-    for y := 0 to h -1 do
+    for x := 0 to 255 do
+    begin
+      r[x] := 0; g[x] := 0; b[x] := 0; ia[x] := 0;
+    end;
+    for y := 1 to h -1 do
     begin
       Pixel := Bitmap.Scanline[y];
       for x := 0 to w -1 do
       begin
-        if y=0 then begin
-          r[x] := 0; g[x] := 0; b[x] := 0; ia[x] := 0;
-        end;
         r[x] := r[x]+Pixel.Red;
         g[x] := g[x]+Pixel.Green;
         b[x] := b[x]+Pixel.Blue;
-        ia[x] := (r[x]+b[x]+g[x]) div 3 + ia[x];
+        ia[x] := Round((r[x]+b[x]+g[x]) / 3) + ia[x];
         Inc(Pixel);
       end;
     end;
+//    FMain.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
+    FMain.TBSeeing.Min := 0;
+    FMain.TBSeeing.Max := w*255;
+    FMain.TBSeeing.SelStart := w*255;
+    FMain.TBSeeing.SelEnd := w*255;
     for x := 0 to w-1 do
     begin
-      Series1.AddXY(x,r[x],'',clRed);
-      Series2.AddXY(x,g[x],'',clGreen);
-      Series3.AddXY(x,b[x],'',clBlue);
-      Series4.AddXY(x,ia[x],'',clWhite);
+      //Series1.AddXY(x,r[x]/w,'',clRed);
+      //Series2.AddXY(x,g[x]/w,'',clGreen);
+      //Series3.AddXY(x,b[x]/w,'',clBlue);
+      Series4.AddXY(x,ia[x]/w,'',clWhite);
+      if ia[x]/w< FMain.TBSeeing.SelStart then
+        FMain.TBSeeing.SelStart := Round(ia[x]/w);
+      if ia[x]/w> FMain.TBSeeing.SelEnd then
+        FMain.TBSeeing.SelEnd := Round(ia[x]/w);
     end;
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-//    FSettings.TBSeeing.SelEnd := Round(integral*100);
-//    FSettings.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd <= FSettings.TBSeeing.Position);
+    FMain.SeeingOK := (FMain.TBSeeing.Position >= FMain.TBSeeing.SelStart) and
+                      (FMain.TBSeeing.Position <= FMain.TBSeeing.SelEnd);
 
     Histogramm.Refresh;
   end; // Tabindex 3
@@ -344,11 +455,13 @@ begin
       Series3.AddXY(x,Pixel.Blue,'',clBlue);
       Series4.AddXY(x,intensity,'',clWhite);
     end;
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-    FSettings.TBSeeing.SelEnd := Round(integral*100);
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd >= FSettings.TBSeeing.Position);
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(integral*100);
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd >= FMain.TBSeeing.Position);
+    write(F,FormatDateTime('c;',Now));
+    writeln(F,Format('%f',[integral]));
 
     Histogramm.Refresh;
   end; // Tabindex 4
@@ -380,11 +493,11 @@ begin
     Series4.AddXY(Series4.XValues.Last+1,sobel,'',clWhite);
     if Series4.XValues.Count>128 then Series4.Delete(0);
 
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-    FSettings.TBSeeing.SelEnd := Round(100*sobel);
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd >= FSettings.TBSeeing.Position);
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(100*sobel);
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd >= FMain.TBSeeing.Position);
 
     Histogramm.Refresh;
   end; // Tabindex 5
@@ -424,16 +537,16 @@ begin
       Series4.AddXY(Series4.XValues.Last+1,sobel,'',clWhite);
     if Series4.XValues.Count>128 then Series4.Delete(0);
 
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-    FSettings.TBSeeing.SelEnd := Round(100*sobel);
-//    FSettings.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd <= FSettings.TBSeeing.Position);
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(100*sobel);
+//    FMain.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd <= FMain.TBSeeing.Position);
 
     Histogramm.Refresh;
   end; // Tabindex 6
-  7:
+  7: //Noise
   begin
 {    Series1.Clear;
     Series2.Clear;
@@ -442,20 +555,20 @@ begin
     Histogramm.LeftAxis.Automatic := true;
     sobel := 0; // stdev
     intensity := 0; // avg
-    for y := 0 to h-1 do
+    for y := 1 to h-2 do
     begin
       Pixel := Bitmap.Scanline[y];
-      for x := 0 to w -1 do
+      for x := 1 to w -2 do
       begin
         intensity := intensity+ ((Pixel.Red+Pixel.Green+Pixel.Blue) div 3);
         Inc(Pixel);
       end;
     end;
     intensity := intensity / (w*h);
-    for y := 0 to h-1 do
+    for y := 1 to h-2 do
     begin
       Pixel := Bitmap.Scanline[y];
-      for x := 0 to w -1 do
+      for x := 1 to w -2 do
       begin
         sobel := sobel + sqr((Pixel.Red+Pixel.Green+Pixel.Blue) div 3 - intensity);
         Inc(Pixel);
@@ -469,12 +582,14 @@ begin
       Series4.AddXY(Series4.XValues.Last+1,sobel,'',clWhite);
     if Series4.XValues.Count>128 then Series4.Delete(0);
 
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-    FSettings.TBSeeing.SelEnd := Round(100*sobel);
-//    FSettings.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd <= FSettings.TBSeeing.Position);
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(100*sobel);
+//    FMain.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd <= FMain.TBSeeing.Position);
+    write(F,FormatDateTime('c;',Now));
+    writeln(F,Format('%f',[sobel]));
 
     Histogramm.Refresh;
   end; // Tabindex 7
@@ -519,37 +634,20 @@ begin
     end;
     sobel := sqrt(sobel);
 
-    {if Series1.XValues.Count=0 then
-      Series1.AddXY(0,rintegral,'',clred)
-    else
-      Series1.AddXY(Series1.XValues.Last+1,rintegral,'',clred);
-    if Series1.XValues.Count>128 then Series1.Delete(0);
-
-    if Series2.XValues.Count=0 then
-      Series2.AddXY(0,gintegral,'',clgreen)
-    else
-      Series2.AddXY(Series2.XValues.Last+1,gintegral,'',clgreen);
-    if Series2.XValues.Count>128 then Series2.Delete(0);
-
-    if Series3.XValues.Count=0 then
-      Series3.AddXY(0,bintegral,'',clblue)
-    else
-      Series3.AddXY(Series3.XValues.Last+1,bintegral,'',clblue);
-    if Series3.XValues.Count>128 then Series3.Delete(0);
-    }
-
     if Series4.XValues.Count=0 then
       Series4.AddXY(0,sobel,'',clWhite)
     else
       Series4.AddXY(Series4.XValues.Last+1,sobel,'',clWhite);
     if Series4.XValues.Count>128 then Series4.Delete(0);
 
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-    FSettings.TBSeeing.SelEnd := Round(sobel*100);
-//    FSettings.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd <= FSettings.TBSeeing.Position);
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(sobel*100);
+//    FMain.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd <= FMain.TBSeeing.Position);
+    write(F,FormatDateTime('c;',Now));
+    writeln(F,Format('%f',[sobel]));
 
     Histogramm.Refresh;
   end; // Tabindex 8
@@ -589,11 +687,13 @@ begin
       Series4.AddXY(Series4.XValues.Last+1,intensity,'',clWhite);
     if Series4.XValues.Count>64 then Series4.Delete(0);
 
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-    FSettings.TBSeeing.SelEnd := Round(intensity*100);
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd >= FSettings.TBSeeing.Position);
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(intensity*100);
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd >= FMain.TBSeeing.Position);
+    write(F,FormatDateTime('c;',Now));
+    writeln(F,Format('%f',[intensity]));
 
     Histogramm.Refresh;
   end; // Tabindex 9
@@ -607,7 +707,7 @@ begin
       cspec[x].r := 0;
       cspec[x].i := 0;
     end;}
-    for y := (h DIV 4) to 3*(h DIV 4) do
+    for y := 0 to h-1 do
     begin
       Pixel := Bitmap.Scanline[y];
       for x := 0 to w -1 do
@@ -619,32 +719,87 @@ begin
       CFTG(cin,cout,cin,w); // Forward FFT;
       for x := 0 to (w -1) DIV 2 do
       begin
-        cspec[x].r := max(cspec[x].r,cout[x].r);
-        cspec[x].i := max(cspec[x].i,cout[x].i);
+        cspec[x].r := avg(cspec[x].r,cout[x].r);
+        cspec[x].i := avg(cspec[x].i,cout[x].i);
       end;
     end;
     Series4.Clear;
-    for x := 1 to (w -1) DIV 2 do
+    for x := 0 to (w -1) DIV 2 do
     begin
       intensity := sqrt(sqr(cspec[x].r)+sqr(cspec[x].i));
-      Series4.AddXY(x,log2(log2(intensity+1)+1),'',clwhite);
+      Series4.AddXY(x,log2(intensity+1),'',clwhite);
     end;
 
-    FSettings.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
-    FSettings.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
-    FSettings.TBSeeing.SelStart := FSettings.TBSeeing.Min;
-    FSettings.TBSeeing.SelEnd := Round(intensity*100);
-    FHaupt.SeeingOK := (FSettings.TBSeeing.SelEnd >= FSettings.TBSeeing.Position);
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(intensity*100);
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd >= FMain.TBSeeing.Position);
 
     Histogramm.Refresh;
   end; // Tabindex 10
+  11: // Position
+  begin
+    Histogramm.LeftAxis.Automatic := true;
 
+    if Series1.XValues.Count>255 then Series1.Delete(0);
+    //if Series2.XValues.Count>255 then Series2.Delete(0);
+    if Series3.XValues.Count>255 then Series3.Delete(0);
+    if Series4.XValues.Count>255 then Series4.Delete(0);
+    integral := sqrt(sqr(FMain.center_x+FMain.x1-x0)+sqr(FMain.center_y+FMain.y1-y0));
+    intensity := max(FMain.center_x+FMain.x1-x0,FMain.center_y+FMain.y1-y0);
+    if Series1.XValues.Count=0 then
+    begin
+      Series1.AddXY(0,FMain.center_x+FMain.x1-x0,'',clRed);
+      //Series2.AddXY(0,integral,'',clGreen);
+      Series3.AddXY(0,FMain.center_y+FMain.y1-y0,'',clBlue);
+      Series4.AddXY(0,intensity,'',clwhite);
+    end
+    else
+    begin
+      Series1.AddXY(Series1.XValues.Last+1,FMain.center_x+FMain.x1-x0,'',clRed);
+      //Series2.AddXY(Series1.XValues.Last+1,integral,'',clGreen);
+      Series3.AddXY(Series3.XValues.Last+1,FMain.center_y+FMain.y1-y0,'',clBlue);
+      Series4.AddXY(Series1.XValues.Last+1,intensity,'',clwhite);
+    end;
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(intensity*100);
+//    FMain.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd <= FMain.TBSeeing.Position);
+
+    write(F,FormatDateTime('c;',Now));
+    writeln(F,Format('%f;%f',[FMain.center_x+FMain.x1-x0,FMain.center_y+FMain.y1-y0]));
+
+    Histogramm.Refresh;
+  end; // Tabindex 11
+  12:
+  begin
+    Histogramm.LeftAxis.Automatic := true;
+    Sobel := 100*FnSobel(Bitmap)/FnFWHM(Bitmap);
+    if Series4.XValues.Count=0 then
+      Series4.AddXY(0,sobel,'',clWhite)
+    else
+      Series4.AddXY(Series4.XValues.Last+1,sobel,'',clWhite);
+    if Series4.XValues.Count>128 then Series4.Delete(0);
+
+    FMain.TBSeeing.Min := Round(Histogramm.LeftAxis.Minimum*100);
+    FMain.TBSeeing.Max := Round(Histogramm.LeftAxis.Maximum*100);
+    FMain.TBSeeing.SelStart := FMain.TBSeeing.Min;
+    FMain.TBSeeing.SelEnd := Round(100*sobel);
+//    FMain.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
+    FMain.SeeingOK := (FMain.TBSeeing.SelEnd >= FMain.TBSeeing.Position);
+
+    Histogramm.Refresh;
+  end; // Tabindex 12
   end; // case
+  FMain.TBSeeing.Frequency := (FMain.TBSeeing.Max-FMain.TBSeeing.Min) div 10;
 end;
 
 procedure TFInfo.FormCreate(Sender: TObject);
 begin
-  AssignFile(F,'stat.csv');
+  AssignFile(F,ExtractFilePath(ParamStr(0))+'stat.csv');
   Rewrite(F);
 end;
 
