@@ -34,9 +34,6 @@ type
     MIOptometric: TMenuItem;
     MIControl: TMenuItem;
     MIOutput: TMenuItem;
-    MITimer: TMenuItem;
-    MIFirstAid: TMenuItem;
-    MIAbout: TMenuItem;
     procedure FormShow(Sender: TObject);
     procedure SBSettingsClick(Sender: TObject);
     procedure SBFormatClick(Sender: TObject);
@@ -57,17 +54,11 @@ type
     procedure MIOptometricClick(Sender: TObject);
     procedure MIControlClick(Sender: TObject);
     procedure MIOutputClick(Sender: TObject);
-    procedure MITimerClick(Sender: TObject);
-    procedure SPCountChange(Sender: TObject);
-    procedure FEFilesChange(Sender: TObject);
-    procedure FEFilesExit(Sender: TObject);
-    procedure MIAboutClick(Sender: TObject);
-    procedure MIFirstAidClick(Sender: TObject);
+    procedure Help1Click(Sender: TObject);
   private
     { Private-Deklarationen }
     bwidth,bheight,
-    fwidth,fheight,
-    gwidth,gheight:integer;
+    fwidth,fheight:integer;
     Dragging, Drag_x1, Drag_x2, Drag_y1, Drag_y2,
     isFirstImage: Boolean;
     TmpBmp,TmpBmp1: TBitmap;
@@ -86,7 +77,7 @@ type
     { Public-Deklarationen }
     center_x,center_y: double;
     x1,y1,x2,y2: integer;
-    gx1,gy1,gx2,gy2: integer; // Guideframe;
+
     FilesToCapture: Integer;
     SeeingOK: Boolean;
     IniFile: TInifile;
@@ -105,7 +96,7 @@ var
 
 implementation
 
-uses USource, UOutput, UInfo, UControl, UTimer;
+uses UOutput, UInfo, UControl, UDXSource;
 
 {$R *.DFM}
 
@@ -117,13 +108,10 @@ end;
 
 procedure TFMain.FormShow(Sender: TObject);
 begin
-  FSource.Show;
+  FDXSource.Show;
   FOutput.Show;
   FInfo.Show;
   FControl.Show;
-  FTimer.Show;
-  FEFiles.Text := IniFile.ReadString('Settings','Filename','C:\Cap.bmp');
-  SPCount.Value := IniFile.ReadInteger('Settings','Bitmaps',20);
 end;
 
 procedure TFMain.FindCenter(Bitmap: TBitmap;var c_x,c_y: double);
@@ -355,44 +343,36 @@ begin
   begin
     x1 := 0; y1 := 0;
     x2 := bwidth-1; y2 := bheight-1;
+    fwidth := x2-x1+1;
+    fheight := y2-y1+1;
+    center_x := fwidth div 2;
+    center_y := fheight div 2;
     SetCenter;
     isFirstImage := False;
   end;
   SBInfo.Panels[0].Text := Format('%d*%d',[bwidth,bheight]);
-  TmpBmp.Width := gwidth;
-  TmpBmp.Height := gheight;
   BitBlt( TmpBmp.Canvas.Handle,
           0,0,
-          gwidth,gheight,
+          fwidth,fheight,
           Image1.Picture.Bitmap.Canvas.Handle,
-          gx1,gy1,
+          x1,y1,
           SRCCOPY);
   FindCenter(TmpBmp,cnx,cny);
-  dx := 0.9*(cnx-center_x);
-  dy := 0.9*(cny-center_y);
+  dx := 0.95*(cnx-center_x);
+  dy := 0.95*(cny-center_y);
   SBInfo.Panels[1].Text := Format('d(%f;%f)',[dx,dy]);
-  SBInfo.Panels[3].Text := Format('(%3d;%3d)-(%3d;%3d)',[x1,y1,x2,y2]);
-  SBInfo.Panels[4].Text := Format('(%3d;%3d)-(%3d;%3d)',[gx1,gy1,gx2,gy2]);
+  SBInfo.Panels[3].Text := Format('new(%f;%f)',[cnx+x1,cny+y1]);
+  SBInfo.Panels[4].Text := Format('org(%f;%f)',[center_x+x1,center_y+y1]);
   if (x1+dx>0) and (x2+dx<bwidth) then
   begin
     x1 := Round(x1+dx); x2 := Round(x2+dx);
+    center_x := cnx-dx;
   end;
   if (y1+dy>0) and (y2+dy<bheight) then
   begin
     y1 := Round(y1+dy); y2 := Round(y2+dy);
-  end;
-  if (gx1+dx>0) and (gx2+dx<bwidth) then
-  begin
-    gx1 := Round(gx1+dx); gx2 := Round(gx2+dx);
-    center_x := cnx-dx;
-  end;
-  if (gy1+dy>0) and (gy2+dy<bheight) then
-  begin
-    gy1 := Round(gy1+dy); gy2 := Round(gy2+dy);
     center_y := cny-dy;
   end;
-  TmpBmp.Width := fwidth;
-  TmpBmp.Height := fheight;
   BitBlt( TmpBmp.Canvas.Handle,
           0,0,
           fwidth,fheight,
@@ -402,12 +382,10 @@ begin
   if FInfo.Visible then FInfo.Optometric(TmpBmp)
   else
     SeeingOK := True;
+  if MIContrast.Checked then Contrast(TmpBmp);
+  if MIRGBAlign.Checked then RGBAlign(TmpBmp);
   if SeeingOK then
   begin
-    if MIContrast.Checked then Contrast(TmpBmp);
-    if MIRGBAlign.Checked then RGBAlign(TmpBmp);
-    FOutput.Image1.Picture.Bitmap.Width := fwidth;
-    FOutput.Image1.Picture.Bitmap.Height := fheight;
     BitBlt( FOutput.Image1.Picture.Bitmap.Canvas.Handle,
             0,0,
             fwidth,fheight,
@@ -416,7 +394,7 @@ begin
             SRCCOPY);
     FOutput.Image1.Refresh;
   end;
-  DrawCrossHair(Round(cnx)+gx1,Round(cny)+gy1,clFuchsia);
+  //DrawCrossHair(Round(cnx)+x1,Round(cny)+y1,clFuchsia);
   DrawCrossHair(Round(center_x)+x1,Round(center_y)+y1,clYellow);
   Image1.Canvas.Pen.Color := clAqua;
   Image1.Canvas.Rectangle(x1,y1,x2,y2);
@@ -431,7 +409,6 @@ begin
     end;
   end;
   FControl.Guide;
-  Application.ProcessMessages;
 end;
 
 procedure TFMain.DrawCrosshair(cx,cy: integer; chColor: TColor);
@@ -451,14 +428,14 @@ end;
 
 procedure TFMain.SBSettingsClick(Sender: TObject);
 begin
-  if FSource.VideoCap1.HasDlgSource then
-    FSource.VideoCap1.DlgVSource;
+{  if FSource.VideoCap1.HasDlgSource then
+    FSource.VideoCap1.DlgVSource;}
 end;
 
 procedure TFMain.SBFormatClick(Sender: TObject);
 begin
-  if FSource.VideoCap1.HasDlgFormat then
-    FSource.VideoCap1.DlgVFormat;
+{  if FSource.VideoCap1.HasDlgFormat then
+    FSource.VideoCap1.DlgVFormat;}
   isFirstImage := True;
 end;
 
@@ -476,14 +453,6 @@ begin
     x2 := x; y2 := y;
     Dragging := True;
   end;
-  if Shift = [ssRight] then
-  begin
-    gx1 := x; gy1 := y;
-    gx2 := x; gy2 := y;
-    Dragging := True;
-  end;
-  SBInfo.Panels[3].Text := Format('(%3d;%3d)-(%3d;%3d)',[x1,y1,x2,y2]);
-  SBInfo.Panels[4].Text := Format('(%3d;%3d)-(%3d;%3d)',[gx1,gy1,gx2,gy2]);
 end;
 
 procedure swapvar(var a,b: integer);
@@ -498,49 +467,62 @@ procedure TFMain.SetCenter;
 begin
   fwidth := x2-x1+1;
   fheight := y2-y1+1;
-  gwidth := gx2-gx1+1;
-  gheight := gy2-gy1+1;
   SBInfo.Panels[2].Text := Format('%d*%d',[fwidth,fheight]);
-  SBInfo.Panels[3].Text := Format('(%3d;%3d)-(%3d;%3d)',[x1,y1,x2,y2]);
-  SBInfo.Panels[4].Text := Format('(%3d;%3d)-(%3d;%3d)',[gx1,gy1,gx2,gy2]);
   FOutput.Image1.Picture.Bitmap.Width := fwidth;
   FOutput.Image1.Picture.Bitmap.Height := fheight;
-  TmpBmp.Width := gwidth;
-  TmpBmp.Height := gheight;
+  TmpBmp.Width := fwidth;
+  TmpBmp.Height := fheight;
   BitBlt( TmpBmp.Canvas.Handle,
           0,0,
-          gwidth,gheight,
+          fwidth,fheight,
           Image1.Picture.Bitmap.Canvas.Handle,
-          gx1,gy1,
+          x1,y1,
           SRCCOPY);
   FindCenter(TmpBmp,center_x,center_y);
-  if Dragging then
-  begin
-    BitBlt( FOutput.Image1.Picture.Bitmap.Canvas.Handle,
-            0,0,
-            fwidth,fheight,
-            Image1.Picture.Bitmap.Canvas.Handle,
-            x1,y1,
-            SRCCOPY);
-    FOutput.Image1.Refresh;
-  end;
+  BitBlt( FOutput.Image1.Picture.Bitmap.Canvas.Handle,
+          0,0,
+          fwidth,fheight,
+          Image1.Picture.Bitmap.Canvas.Handle,
+          x1,y1,
+          SRCCOPY);
+  FOutput.Image1.Refresh;
 end;
 
 procedure TFMain.Image1MouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  Drag_x1 := False;
-  Drag_x2 := False;
-  Drag_y1 := False;
-  Drag_y2 := False;
-  Dragging := False;
-  fwidth := x2-x1+1;
-  fheight := y2-y1+1;
-  gwidth := gx2-gx1+1;
-  gheight := gy2-gy1+1;
-  SetCenter;
-  SBInfo.Panels[3].Text := Format('(%3d;%3d)-(%3d;%3d)',[x1,y1,x2,y2]);
-  SBInfo.Panels[4].Text := Format('(%3d;%3d)-(%3d;%3d)',[gx1,gy1,gx2,gy2]);
+  if Drag_x1 or Drag_x2 or Drag_y1 or Drag_y2 then
+  begin
+    if Drag_x1 then x1 := x;
+    if Drag_x2 then x2 := x;
+    if Drag_y1 then y1 := y;
+    if Drag_y2 then y2 := y;
+    if (x1=x2) or (y1=y2) then
+    begin
+      x1 := 0; y1 := 0;
+      x2 := bwidth-1; y2 := bheight-1;
+    end;
+    if x2<x1 then swapvar(x1,x2);
+    if y2<y1 then swapvar(y1,y2);
+    SetCenter;
+    Drag_x1 := False;
+    Drag_x2 := False;
+    Drag_y1 := False;
+    Drag_y2 := False;
+  end;
+  if Dragging then
+  begin
+    x2 := x; y2 := y;
+    if (x1=x2) or (y1=y2) then
+    begin
+      x1 := 0; y1 := 0;
+      x2 := bwidth-1; y2 := bheight-1;
+    end;
+    if x2<x1 then swapvar(x1,x2);
+    if y2<y1 then swapvar(y1,y2);
+    Dragging := False;
+    SetCenter;
+  end;
 end;
 
 procedure TFMain.Image1MouseMove(Sender: TObject; Shift: TShiftState; X,
@@ -555,46 +537,20 @@ begin
     if Drag_y1 then y1 := y;
     if Drag_y2 then y2 := y;
     SetCenter;
-    with Image1.Canvas do
-    begin
-      Pen.Mode := pmCopy;
-      Pen.Color := clAqua;
-      Rectangle(x1,y1,x2,y2);
-    end;
+    Image1.Canvas.Pen.Mode := pmCopy;
+    Image1.Canvas.Rectangle(x1,y1,x2,y2);
   end;
   if (Shift = [ssLeft]) and Dragging then
   begin
+    //Image1.Canvas.Pen.Mode := pmNotCopy;
+    //Image1.Canvas.Rectangle(x1,y1,x2,y2);
     x2 := x; y2 := y;
     if x2<x1 then swapvar(x1,x2);
     if y2<y1 then swapvar(y1,y2);
-    gx1 := x1; gy1 := y1; gx2 := x2; gy2 := y2;
     SetCenter;
-    with Image1.Canvas do
-    begin
-      Pen.Mode := pmCopy;
-      Pen.Color := clAqua;
-      Rectangle(x1,y1,x2,y2);
-    end;
+    Image1.Canvas.Pen.Mode := pmCopy;
+    Image1.Canvas.Rectangle(x1,y1,x2,y2);
   end;
-  if (Shift = [ssRight]) and Dragging then
-  begin
-    gx2 := x; gy2 := y;
-    if gx2<gx1 then swapvar(gx1,gx2);
-    if gy2<gy1 then swapvar(gy1,gy2);
-    SetCenter;
-    with Image1.Canvas do
-    begin
-      Pen.Mode := pmCopy;
-      Pen.Color := clFuchsia;
-      Rectangle(gx1,gy1,gx2,gy2);
-    end;
-  end;
-  fwidth := x2-x1+1;
-  fheight := y2-y1+1;
-  gwidth := gx2-gx1+1;
-  gheight := gy2-gy1+1;
-  SBInfo.Panels[3].Text := Format('(%3d;%3d)-(%3d;%3d)',[x1,y1,x2,y2]);
-  SBInfo.Panels[4].Text := Format('(%3d;%3d)-(%3d;%3d)',[gx1,gy1,gx2,gy2]);
 end;
 
 procedure TFMain.FormCreate(Sender: TObject);
@@ -613,20 +569,18 @@ begin
   TmpBmp1.PixelFormat := pf24Bit;
   x1 := 1; y1 := 1;
   x2 := 638; y2 := 478;
-  gx1 := 1; gy1 := 1;
-  gx2 := 638; gy2 := 478;
   fwidth := x2-x1+1;
   fheight := y2-y1+1;
-  gwidth := fwidth;
-  gheight := fheight;
   bwidth := fwidth;
   bheight := fheight;
-  center_x := gwidth div 2;
-  center_y := gheight div 2;
+  center_x := fwidth div 2;
+  center_y := fheight div 2;
   FilesToCapture := 0;
   SeeingOK := True;
   damping := 0.5;
   IniFile := TIniFile.Create(ExtractFilePath(ParamStr(0))+'AstroCap.Ini');
+  FEFiles.Text := IniFile.ReadString('Settings','Filename','C:\Cap.bmp');
+  SPCount.Value := IniFile.ReadInteger('Settings','Bitmaps',20);
   isFirstImage := True;
 end;
 
@@ -636,10 +590,10 @@ begin
   begin
     WriteString('Settings','Filename',FEFiles.Text);
     WriteInteger('Settings','Bitmaps',SPCount.AsInteger);
-    WriteInteger('VideoCap','DriverIndex',FSource.VideoCap1.DriverIndex);
-    WriteString('VideoCap','DriverName',FSource.VideoCap1.DriverName);
-    WriteInteger('VideoCap','FrameRate',FSource.VideoCap1.FrameRate);
-    WriteInteger('VideoCap','PreviewRate',FSource.VideoCap1.PreviewRate);
+//    WriteInteger('VideoCap','DriverIndex',FSource.VideoCap1.DriverIndex);
+//    WriteString('VideoCap','DriverName',FSource.VideoCap1.DriverName);
+//    WriteInteger('VideoCap','FrameRate',FSource.VideoCap1.FrameRate);
+//    WriteInteger('VideoCap','PreviewRate',FSource.VideoCap1.PreviewRate);
     WriteString('Guide','TimeRA',FloatToStr(FControl.SERect.Value));
     WriteString('Guide','TimeDe',FloatToStr(FControl.SEDecl.Value));
     Free;
@@ -678,7 +632,7 @@ end;
 
 procedure TFMain.MIPreviewClick(Sender: TObject);
 begin
-  if FSource.visible then FSource.Hide else FSource.Show;
+  if FDXSource.visible then FDXSource.Hide else FDXSource.Show;
 end;
 
 procedure TFMain.MIOptometricClick(Sender: TObject);
@@ -696,35 +650,9 @@ begin
   if FOutput.visible then FOutput.Hide else FOutput.Show;
 end;
 
-procedure TFMain.MITimerClick(Sender: TObject);
+procedure TFMain.Help1Click(Sender: TObject);
 begin
-  if FTimer.visible then FTimer.Hide else FTimer.Show;
-end;
-
-procedure TFMain.SPCountChange(Sender: TObject);
-begin
-  if FilesToCapture>0 then
-    FilesToCapture := SPCount.AsInteger;
-end;
-
-procedure TFMain.FEFilesChange(Sender: TObject);
-begin
-  FOutput.Filename := FEFiles.Text;
-end;
-
-procedure TFMain.FEFilesExit(Sender: TObject);
-begin
-  IniFile.WriteString('Settings','Filename',FEFiles.Text);
-end;
-
-procedure TFMain.MIAboutClick(Sender: TObject);
-begin
-  ShellAbout(FMain.Handle,'AstroCap 3','2003 (c) Jörg Weingrill',FMain.Icon.Handle);
-end;
-
-procedure TFMain.MIFirstAidClick(Sender: TObject);
-begin
-  Application.HelpJump('IDH_Wasist');
+  ShellAbout(FMain.Handle,'AstroCap 4','2003 (c) Jörg Weingrill',FMain.Icon.Handle);
 end;
 
 end.

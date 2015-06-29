@@ -12,7 +12,6 @@ object FSource: TFSource
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   FormStyle = fsStayOnTop
-  HelpFile = 'AstroCap.hlp'
   OldCreateOrder = False
   OnClose = FormClose
   OnCreate = FormCreate

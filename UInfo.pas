@@ -142,10 +142,10 @@ begin
   size := w*h;
   average := 0; // avg
   fwhm := 0; // fwhm
-  for y := 1 to h-2 do
+  for y := 0 to h-1 do
   begin
     Pixel := Bitmap.Scanline[y];
-    for x := 1 to w -2 do
+    for x := 0 to w -1 do
     begin
       intensity := (Pixel.Red+Pixel.Green+Pixel.Blue) / 3;
       average := average + intensity;
@@ -153,10 +153,10 @@ begin
     end;
   end;
   average := average/(w*h);
-  for y := 1 to h-2 do
+  for y := 0 to h-1 do
   begin
     Pixel := Bitmap.Scanline[y];
-    for x := 1 to w -2 do
+    for x := 0 to w -1 do
     begin
       intensity := (Pixel.Red+Pixel.Green+Pixel.Blue) / 3;
       if (intensity)>average then
@@ -182,10 +182,10 @@ begin
     begin
       r[x] := 0; g[x] := 0; b[x] := 0;
     end;
-    for y := 1 to h -2 do
+    for y := 1 to h -1 do
     begin
       Pixel := Bitmap.Scanline[y];
-      for x := 1 to w -2 do
+      for x := 0 to w -1 do
       begin
         Inc(r[Pixel.Red]);
         Inc(g[Pixel.Green]);
@@ -238,10 +238,10 @@ begin
     gintegral := 0.0;
     bintegral := 0.0;
     integral := 0.0;
-    for y := 1 to h -2 do
+    for y := 0 to h -1 do
     begin
       Pixel := Bitmap.Scanline[y];
-      for x := 1 to w -2 do
+      for x := 0 to w -1 do
       begin
         rintegral := rintegral+Pixel.Red;
         gintegral := gintegral+Pixel.Green;
@@ -546,7 +546,7 @@ begin
 
     Histogramm.Refresh;
   end; // Tabindex 6
-  7: //Noise
+  7:
   begin
 {    Series1.Clear;
     Series2.Clear;
@@ -555,20 +555,20 @@ begin
     Histogramm.LeftAxis.Automatic := true;
     sobel := 0; // stdev
     intensity := 0; // avg
-    for y := 1 to h-2 do
+    for y := 0 to h-1 do
     begin
       Pixel := Bitmap.Scanline[y];
-      for x := 1 to w -2 do
+      for x := 0 to w -1 do
       begin
         intensity := intensity+ ((Pixel.Red+Pixel.Green+Pixel.Blue) div 3);
         Inc(Pixel);
       end;
     end;
     intensity := intensity / (w*h);
-    for y := 1 to h-2 do
+    for y := 0 to h-1 do
     begin
       Pixel := Bitmap.Scanline[y];
-      for x := 1 to w -2 do
+      for x := 0 to w -1 do
       begin
         sobel := sobel + sqr((Pixel.Red+Pixel.Green+Pixel.Blue) div 3 - intensity);
         Inc(Pixel);
@@ -588,8 +588,6 @@ begin
     FMain.TBSeeing.SelEnd := Round(100*sobel);
 //    FMain.TBSeeing.SelEnd := Round(100.0*(sobel - minsobel)/(maxsobel-minsobel));
     FMain.SeeingOK := (FMain.TBSeeing.SelEnd <= FMain.TBSeeing.Position);
-    write(F,FormatDateTime('c;',Now));
-    writeln(F,Format('%f',[sobel]));
 
     Histogramm.Refresh;
   end; // Tabindex 7

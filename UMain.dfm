@@ -1,16 +1,15 @@
 object FMain: TFMain
-  Left = 206
-  Top = 123
+  Left = 201
+  Top = 162
   Width = 648
   Height = 582
-  Caption = 'AstroCap 3.4'
+  Caption = 'AstroCap 4.0'
   Color = clBlack
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
   Font.Name = 'MS Sans Serif'
   Font.Style = []
-  HelpFile = 'AstroCap.hlp'
   Icon.Data = {
     0000010001002020100000000000E80200001600000028000000200000004000
     0000010004000000000080020000000000000000000000000000000000000000
@@ -140,8 +139,6 @@ object FMain: TFMain
       ShowHint = True
       TabOrder = 0
       Text = 'C:\Cap.bmp'
-      OnChange = FEFilesChange
-      OnExit = FEFilesExit
     end
     object SPCount: TRxSpinEdit
       Left = 336
@@ -158,7 +155,6 @@ object FMain: TFMain
       ParentShowHint = False
       ShowHint = True
       TabOrder = 1
-      OnChange = SPCountChange
     end
     object TBSeeing: TTrackBar
       Left = 520
@@ -268,24 +264,11 @@ object FMain: TFMain
         Caption = 'Output'
         OnClick = MIOutputClick
       end
-      object MITimer: TMenuItem
-        Caption = 'Timer'
-        OnClick = MITimerClick
-      end
     end
     object Help1: TMenuItem
       Caption = 'Help'
       Hint = 'MIHelp'
-      object MIFirstAid: TMenuItem
-        Caption = 'Help'
-        HelpContext = 100
-        ShortCut = 112
-        OnClick = MIFirstAidClick
-      end
-      object MIAbout: TMenuItem
-        Caption = 'About...'
-        OnClick = MIAboutClick
-      end
+      OnClick = Help1Click
     end
   end
   object FPMainForm: TFormPlacement

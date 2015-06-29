@@ -1,4 +1,4 @@
-program AstroCap3;
+program AstroCap4;
 
 uses
   Forms,

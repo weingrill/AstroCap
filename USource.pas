@@ -31,8 +31,8 @@ uses UMain;
 procedure TFSource.VideoCap1FrameCallback(sender: TObject; lpVhdr: PVIDEOHDR);
 begin
   FrameToBitmap(FMain.Image1.Picture.Bitmap,lpVhdr.lpData,Videocap1.BitMapInfo);
-  //FMain.Image1.Picture.Bitmap.PixelFormat := pf24bit;
-  //FMain.Image1.Refresh;
+  FMain.Image1.Picture.Bitmap.PixelFormat := pf24bit;
+  FMain.Image1.Refresh;
   FMain.ProcessImage;
 end;
 
@@ -46,7 +46,6 @@ begin
   end;
   VideoCap1.DriverOpen := True;
   VideoCap1.VideoPreview := True;
-//  VideoCap1.DoubleBuffered := True;
 end;
 
 procedure TFSource.FormClose(Sender: TObject; var Action: TCloseAction);

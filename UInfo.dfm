@@ -5,7 +5,7 @@ object FInfo: TFInfo
   Height = 145
   Hint = 'Optometrie'
   BorderStyle = bsSizeToolWin
-  Caption = 'Optometric'
+  Caption = 'Optometrie'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText

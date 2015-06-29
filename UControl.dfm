@@ -11,7 +11,6 @@ object FControl: TFControl
   Font.Height = -11
   Font.Name = 'MS Sans Serif'
   Font.Style = []
-  HelpFile = 'AstroCap.hlp'
   KeyPreview = True
   Menu = MainMenu1
   OldCreateOrder = False
